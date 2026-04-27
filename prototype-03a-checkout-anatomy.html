@@ -91,9 +91,13 @@ body{background:#0A0908;display:flex;flex-direction:column;align-items:center;ju
 
 .proto-bar{position:fixed;bottom:0;left:0;right:0;text-align:center;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#7A7569}
 .proto-bar span{color:rgba(122,117,105,0.4)}
+
+.back-btn{position:fixed;top:16px;left:16px;z-index:999;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(122,117,105,0.6);text-decoration:none;background:rgba(10,9,8,0.7);border:1px solid rgba(255,255,255,0.08);padding:8px 14px;border-radius:2px;backdrop-filter:blur(8px);transition:color 0.2s,border-color 0.2s}
+.back-btn:hover{color:#C4A882;border-color:rgba(196,168,130,0.3)}
 </style>
 </head>
 <body>
+<a class="back-btn" href="index.html">← Index</a>
 <div class="phone-frame" id="phoneFrame">
 
   <div class="asos-fallback active" id="asosFallback">
