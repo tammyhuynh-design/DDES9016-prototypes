@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Prototype 03c — Monthly Anatomy</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{background:#0A0908;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+
+.phone-frame{width:375px;height:812px;background:#fff;border-radius:44px;overflow:hidden;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1),0 0 0 8px #1C1A16,0 0 0 10px #2a2a2a,0 50px 100px rgba(0,0,0,0.5)}
+@media(max-width:400px){body{background:#fff}.phone-frame{width:100%;height:100vh;border-radius:0;box-shadow:none}}
+
+.sheet-handle{width:32px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin:10px auto 0;flex-shrink:0}
+
+.sheet-header{padding:7px 18px 7px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0}
+.sheet-title{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(122,117,105,0.6)}
+.sheet-scroll-hint{font-family:'IBM Plex Mono',monospace;font-size:8px;color:rgba(122,117,105,0.28)}
+
+.sum-strip{display:flex;align-items:center;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0;background:rgba(255,255,255,0.012)}
+.sum-col{flex:1;text-align:center}
+.sum-divider{width:1px;height:24px;background:rgba(255,255,255,0.06)}
+.sum-val{font-family:'Playfair Display',serif;font-size:13px;color:#E8E4DC;margin-bottom:2px;line-height:1}
+.sum-label{font-family:'IBM Plex Mono',monospace;font-size:6.5px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(122,117,105,0.6);line-height:1.3}
+
+.anatomy-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+.sheet-actions{padding:7px 18px 16px;border-top:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:5px;flex-shrink:0;background:#0A0908}
+.trace-btn{width:100%;padding:12px;border-radius:8px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:400;cursor:pointer;transition:all 0.2s;text-align:center;border:none;letter-spacing:0.2px}
+.trace-btn-secondary{background:transparent;border:1px solid rgba(255,255,255,0.09);color:#7A7569}
+.trace-btn-secondary:hover{color:#E8E4DC}
+
+.proto-bar{position:fixed;bottom:0;left:0;right:0;text-align:center;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#7A7569}
+.proto-bar span{color:rgba(122,117,105,0.4)}
+
+.monthly-screen{width:100%;height:100%;display:flex;flex-direction:column;background:#0A0908}
+
+.view-toggle{display:flex;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0}
+.toggle-tab{flex:1;padding:9px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(122,117,105,0.45);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all 0.2s}
+.toggle-tab.active{color:#E8E4DC;border-bottom-color:rgba(255,255,255,0.3)}
+.summary-view{padding:0 24px 32px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.hero-section{padding:24px 0 20px}
+.hero-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(122,117,105,0.5);margin-bottom:12px}
+.hero-number{font-family:'Playfair Display',serif;font-size:48px;line-height:1;color:#C94B3A;margin-bottom:4px}
+.hero-sub{font-size:12px;color:rgba(122,117,105,0.7);line-height:1.5;font-family:'IBM Plex Mono',monospace}
+.mini-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(255,255,255,0.07);border-radius:8px;overflow:hidden;margin-bottom:22px}
+.mini-stat{background:#1C1A16;padding:13px 12px;text-align:center}
+.ms-val{font-family:'Playfair Display',serif;font-size:20px;line-height:1;margin-bottom:4px}
+.ms-label{font-family:'IBM Plex Mono',monospace;font-size:7.5px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(122,117,105,0.55)}
+.cats-label{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(122,117,105,0.45);margin-bottom:14px}
+.cat-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.cat-row:last-child{border-bottom:none}
+.cat-dot{width:4px;height:30px;border-radius:2px;flex-shrink:0}
+.cat-info{flex:1}
+.cat-name{font-size:13px;color:#E8E4DC;margin-bottom:1px;font-family:'IBM Plex Sans',sans-serif;font-weight:300}
+.cat-meta{font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(122,117,105,0.55)}
+.cat-bar-wrap{flex:1;max-width:90px}
+.cat-bar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(0.16,1,0.3,1);width:0%}
+.cat-kg{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(122,117,105,0.55);text-align:right;width:44px;flex-shrink:0}
+.earth-card{margin:20px 0 8px;padding:14px;background:rgba(255,255,255,0.018);border-left:2px solid rgba(200,139,42,0.4);border-radius:0 6px 6px 0}
+.earth-val{font-family:'Playfair Display',serif;font-size:18px;color:#C88B2A;margin-bottom:4px}
+.earth-note{font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(122,117,105,0.55)}
+.record-note{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.12em;color:rgba(122,117,105,0.35);padding:16px 0 4px}
+</style>
+</head>
+<body>
+<div class="phone-frame">
+
+  <div class="monthly-screen">
+
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-header">
+      <span class="sheet-title">MONTHLY ANATOMY · APRIL 2026</span>
+      <span class="sheet-scroll-hint">scroll &#x2193;</span>
+    </div>
+
+    <div class="sum-strip">
+      <div class="sum-col">
+        <div class="sum-val">16</div>
+        <div class="sum-label">PURCHASES</div>
+      </div>
+      <div class="sum-divider"></div>
+      <div class="sum-col">
+        <div class="sum-val">$1,103</div>
+        <div class="sum-label">SPENT</div>
+      </div>
+      <div class="sum-divider"></div>
+      <div class="sum-col">
+        <div class="sum-val">281 kg</div>
+        <div class="sum-label">CO&#8322;</div>
+      </div>
+      <div class="sum-divider"></div>
+      <div class="sum-col">
+        <div class="sum-val">~$88</div>
+        <div class="sum-label">EARTH EST.</div>
+      </div>
+    </div>
+
+    <div class="view-toggle">
+      <button class="toggle-tab active" id="tabSummary" onclick="setView('summary')">Summary</button>
+      <button class="toggle-tab" id="tabAnatomy" onclick="setView('anatomy')">Anatomy</button>
+    </div>
+
+    <div id="viewSummary" class="summary-view" style="display:flex;flex-direction:column">
+
+      <div class="hero-section">
+        <div class="hero-eyebrow">April 2026 · 18 days remaining</div>
+        <div class="hero-number">281</div>
+        <div class="hero-sub">kg CO&#x2082; generated from 16 purchases.<br>AU average: 175 kg/month. You're at 161% with 18 days remaining.</div>
+      </div>
+
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="ms-val" style="color:#E8E4DC">$1,103</div>
+          <div class="ms-label">Spent</div>
+        </div>
+        <div class="mini-stat">
+          <div class="ms-val" style="color:#E8E4DC">16</div>
+          <div class="ms-label">Purchased</div>
+        </div>
+        <div class="mini-stat">
+          <div class="ms-val" style="color:rgba(122,117,105,0.6)">3</div>
+          <div class="ms-label">Skipped</div>
+        </div>
+      </div>
+
+      <div class="cats-label">By category</div>
+
+      <div class="cat-row">
+        <div class="cat-dot" style="background:#C94B3A"></div>
+        <div class="cat-info">
+          <div class="cat-name">Fashion</div>
+          <div class="cat-meta">10 items · $649</div>
+        </div>
+        <div class="cat-bar-wrap">
+          <div class="cat-bar">
+            <div class="cat-bar-fill" id="catFash" style="background:#C94B3A"></div>
+          </div>
+        </div>
+        <div class="cat-kg">164 kg</div>
+      </div>
+
+      <div class="cat-row">
+        <div class="cat-dot" style="background:#C88B2A"></div>
+        <div class="cat-info">
+          <div class="cat-name">Food</div>
+          <div class="cat-meta">4 items · $312</div>
+        </div>
+        <div class="cat-bar-wrap">
+          <div class="cat-bar">
+            <div class="cat-bar-fill" id="catFood" style="background:#C88B2A"></div>
+          </div>
+        </div>
+        <div class="cat-kg">68 kg</div>
+      </div>
+
+      <div class="cat-row">
+        <div class="cat-dot" style="background:#7A7569"></div>
+        <div class="cat-info">
+          <div class="cat-name">Beauty</div>
+          <div class="cat-meta">1 item · $97</div>
+        </div>
+        <div class="cat-bar-wrap">
+          <div class="cat-bar">
+            <div class="cat-bar-fill" id="catBeauty" style="background:#7A7569"></div>
+          </div>
+        </div>
+        <div class="cat-kg">31 kg</div>
+      </div>
+
+      <div class="cat-row">
+        <div class="cat-dot" style="background:#2A7B8A"></div>
+        <div class="cat-info">
+          <div class="cat-name">Homewares</div>
+          <div class="cat-meta">1 item · $45</div>
+        </div>
+        <div class="cat-bar-wrap">
+          <div class="cat-bar">
+            <div class="cat-bar-fill" id="catHome" style="background:#2A7B8A"></div>
+          </div>
+        </div>
+        <div class="cat-kg">18 kg</div>
+      </div>
+
+      <div class="earth-card">
+        <div class="earth-val">Earth paid ~$88 est. this month</div>
+        <div class="earth-note">never invoiced · not collected</div>
+      </div>
+
+      <div class="record-note">a record not a judgement</div>
+
+    </div>
+
+    <div id="viewAnatomy" class="anatomy-scroll" style="display:none">
+      <svg width="375" height="1100" viewBox="0 0 375 1100" xmlns="http://www.w3.org/2000/svg" style="display:block">
+
+        <defs>
+          <!-- Synthetic fibre: packed circles (acrylic/polyester cross-section) -->
+          <pattern id="synthetic" x="0" y="0" width="11" height="11" patternUnits="userSpaceOnUse">
+            <circle cx="3.5" cy="3.5" r="3" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.22)" stroke-width="0.7"/>
+            <circle cx="9" cy="8.5" r="2.5" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="0.6"/>
+          </pattern>
+          <!-- Cotton: amber circles -->
+          <pattern id="cotton" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+            <circle cx="5" cy="5" r="3.5" fill="rgba(200,139,42,0.1)" stroke="rgba(200,139,42,0.32)" stroke-width="0.65"/>
+            <circle cx="0" cy="0" r="1.5" fill="none" stroke="rgba(200,139,42,0.18)" stroke-width="0.5"/>
+            <circle cx="10" cy="10" r="1.5" fill="none" stroke="rgba(200,139,42,0.18)" stroke-width="0.5"/>
+          </pattern>
+          <!-- Glass/packaging: grid dots -->
+          <pattern id="glass" x="0" y="0" width="7" height="7" patternUnits="userSpaceOnUse">
+            <circle cx="3.5" cy="3.5" r="1.2" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+          </pattern>
+          <!-- Linen/viscose: crossing diagonals -->
+          <pattern id="linen" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="8" y2="8" stroke="rgba(255,255,255,0.2)" stroke-width="0.7"/>
+            <line x1="8" y1="0" x2="0" y2="8" stroke="rgba(255,255,255,0.14)" stroke-width="0.5"/>
+          </pattern>
+          <!-- Mixed/other: horizontal lines -->
+          <pattern id="mixed" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="2.5" x2="5" y2="2.5" stroke="rgba(255,255,255,0.15)" stroke-width="0.6"/>
+          </pattern>
+          <!-- Earth stratum patterns -->
+          <pattern id="topsoil" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="3" x2="6" y2="3" stroke="rgba(255,255,255,0.07)" stroke-width="0.6"/>
+            <circle cx="1" cy="1" r="0.8" fill="rgba(255,255,255,0.05)"/>
+            <circle cx="4" cy="4.5" r="0.8" fill="rgba(255,255,255,0.04)"/>
+          </pattern>
+          <pattern id="compacted" x="0" y="0" width="5" height="4" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="5" y2="4" stroke="rgba(255,255,255,0.07)" stroke-width="0.5"/>
+            <line x1="0" y1="4" x2="5" y2="0" stroke="rgba(255,255,255,0.04)" stroke-width="0.4"/>
+          </pattern>
+          <pattern id="bedrock" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="2" x2="4" y2="2" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+            <line x1="0" y1="0" x2="4" y2="0" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+          </pattern>
+          <!-- Clip paths for material composite bar -->
+          <clipPath id="clipSynth">
+            <rect x="18" y="650" width="176" height="58"/>
+          </clipPath>
+          <clipPath id="clipCotton">
+            <rect x="194" y="650" width="81" height="58"/>
+          </clipPath>
+          <clipPath id="clipGlass">
+            <rect x="275" y="650" width="41" height="58"/>
+          </clipPath>
+          <clipPath id="clipLinen">
+            <rect x="316" y="650" width="27" height="58"/>
+          </clipPath>
+          <clipPath id="clipMixed">
+            <rect x="343" y="650" width="14" height="58"/>
+          </clipPath>
+        </defs>
+
+        <!-- ======================================================== -->
+        <!-- SESSION IDENTIFICATION                                     -->
+        <!-- ======================================================== -->
+        <text x="18" y="13" fill="rgba(122,117,105,0.45)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="2">MONTHLY ANATOMY · TRACE SYSTEM</text>
+        <text x="18" y="26" fill="rgba(232,228,220,0.82)" font-family="'IBM Plex Mono',monospace" font-size="9" letter-spacing="0.5">APRIL 2026 · 12 DAYS IN · 16 PURCHASES</text>
+        <text x="18" y="38" fill="rgba(122,117,105,0.6)" font-family="'IBM Plex Mono',monospace" font-size="7.5">FASHION 164 KG · FOOD 68 KG · HOMEWARES 18 KG · BEAUTY 31 KG</text>
+        <text x="18" y="50" fill="rgba(122,117,105,0.45)" font-family="'IBM Plex Mono',monospace" font-size="7">MFG ORIGINS: BD · CN · VN · PK · IN · FR · AU · DIST &#x2192; SYDNEY AU</text>
+        <text x="18" y="61" fill="rgba(122,117,105,0.18)" font-family="'IBM Plex Mono',monospace" font-size="6.5">3 ITEMS SKIPPED THIS MONTH · NOT IN THIS RECORD</text>
+
+        <line x1="0" y1="65" x2="375" y2="65" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+        <!-- ======================================================== -->
+        <!-- CENTRAL SPINE                                              -->
+        <!-- ======================================================== -->
+        <line x1="18" y1="65" x2="18" y2="1080" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+
+        <!-- ======================================================== -->
+        <!-- NODE 1: GLOBAL SUPPLY WEB — 16 CHAINS · 287,000 KM       -->
+        <!-- ======================================================== -->
+        <circle cx="18" cy="79" r="4.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.2" fill="#0A0908"/>
+        <line x1="22" y1="79" x2="36" y2="79" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+        <text x="36" y="76" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="2">01  GLOBAL SUPPLY WEB</text>
+        <text x="357" y="76" text-anchor="end" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="7">16 CHAINS · 287,000 KM</text>
+
+        <!-- MAP FRAME -->
+        <rect x="18" y="88" width="339" height="210" fill="rgba(255,255,255,0.008)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+        <!-- Latitude grid lines -->
+        <line x1="18" y1="136" x2="357" y2="136" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+        <line x1="18" y1="174" x2="357" y2="174" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+        <line x1="18" y1="212" x2="357" y2="212" stroke="rgba(255,255,255,0.07)" stroke-width="0.8" stroke-dasharray="1,3"/>
+        <line x1="18" y1="250" x2="357" y2="250" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+
+        <!-- Longitude grid lines -->
+        <line x1="56" y1="88" x2="56" y2="298" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+        <line x1="131" y1="88" x2="131" y2="298" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+        <line x1="206" y1="88" x2="206" y2="298" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+        <line x1="282" y1="88" x2="282" y2="298" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+
+        <!-- Grid labels -->
+        <text x="21" y="139" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">40&#xB0;N</text>
+        <text x="21" y="177" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">20&#xB0;N</text>
+        <text x="21" y="215" fill="rgba(122,117,105,0.28)" font-family="'IBM Plex Mono',monospace" font-size="6">EQ.</text>
+        <text x="21" y="253" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">20&#xB0;S</text>
+        <text x="54" y="297" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">0&#xB0;</text>
+        <text x="126" y="297" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">40&#xB0;E</text>
+        <text x="200" y="297" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">80&#xB0;E</text>
+        <text x="276" y="297" fill="rgba(122,117,105,0.25)" font-family="'IBM Plex Mono',monospace" font-size="6">120&#xB0;E</text>
+
+        <!-- CONTINENT OUTLINES (verbatim from 03a/03b) -->
+        <!-- Europe -->
+        <path d="M 42,122 L 52,110 L 66,106 L 78,108 L 88,116 L 93,126 L 88,138 L 76,144 L 60,145 L 46,140 Z"
+              stroke="rgba(255,255,255,0.14)" stroke-width="0.8" fill="rgba(255,255,255,0.025)"/>
+        <!-- Iberian Peninsula -->
+        <path d="M 42,140 L 55,135 L 62,142 L 58,152 L 44,154 L 38,146 Z"
+              stroke="rgba(255,255,255,0.1)" stroke-width="0.7" fill="rgba(255,255,255,0.015)"/>
+        <!-- Scandinavia -->
+        <path d="M 66,106 L 70,94 L 78,90 L 84,98 L 78,108"
+              stroke="rgba(255,255,255,0.1)" stroke-width="0.7" fill="rgba(255,255,255,0.015)"/>
+        <!-- Africa -->
+        <path d="M 60,148 L 80,142 L 98,148 L 110,164 L 114,186 L 108,210 L 94,228 L 78,234 L 60,228 L 48,210 L 44,186 L 48,165 Z"
+              stroke="rgba(255,255,255,0.14)" stroke-width="0.8" fill="rgba(255,255,255,0.025)"/>
+        <!-- Middle East -->
+        <path d="M 96,138 L 118,132 L 135,136 L 140,148 L 130,158 L 112,160 L 96,154 Z"
+              stroke="rgba(255,255,255,0.1)" stroke-width="0.7" fill="rgba(255,255,255,0.018)"/>
+        <!-- Asia main body -->
+        <path d="M 96,136 L 108,118 L 132,110 L 170,106 L 214,107 L 258,109 L 288,116 L 315,126 L 322,140 L 308,156 L 282,165 L 255,173 L 228,180 L 206,188 L 185,184 L 162,173 L 135,162 L 110,150 Z"
+              stroke="rgba(255,255,255,0.15)" stroke-width="0.9" fill="rgba(255,255,255,0.028)"/>
+        <!-- India -->
+        <path d="M 200,182 L 220,177 L 238,183 L 244,202 L 234,220 L 218,228 L 200,222 L 192,204 Z"
+              stroke="rgba(255,255,255,0.12)" stroke-width="0.8" fill="rgba(255,255,255,0.022)"/>
+        <!-- Southeast Asia -->
+        <path d="M 256,174 L 278,168 L 294,175 L 296,190 L 283,197 L 264,195 L 252,186 Z"
+              stroke="rgba(255,255,255,0.1)" stroke-width="0.7" fill="rgba(255,255,255,0.018)"/>
+        <!-- Japan -->
+        <ellipse cx="320" cy="130" rx="8" ry="18" transform="rotate(-15,320,130)"
+                 stroke="rgba(255,255,255,0.1)" stroke-width="0.7" fill="rgba(255,255,255,0.015)"/>
+        <!-- Australia -->
+        <path d="M 262,258 L 298,248 L 336,250 L 353,268 L 348,288 L 322,298 L 288,298 L 262,286 Z"
+              stroke="rgba(255,255,255,0.14)" stroke-width="0.8" fill="rgba(255,255,255,0.025)"/>
+        <!-- Tasmania -->
+        <ellipse cx="318" cy="303" rx="7" ry="5"
+                 stroke="rgba(255,255,255,0.1)" stroke-width="0.7" fill="rgba(255,255,255,0.015)"/>
+
+        <!-- ========================================================
+             ALL 16 SUPPLY CHAIN ROUTES
+             Density is the message — all at low opacity
+             Key coords:
+               Dhaka:      222,167    London:    56,114
+               Sydney:     325,264    Guangzhou: 276,170
+               Tianjin:    290,128    Melbourne: 306,282
+               Rajasthan:  192,157    Ghent:      68,114
+               Hamburg:     74,107    HoChi Minh:264,183
+               Lahore:     196,148    Grasse:     60,118
+               NZ:         344,293    QLD:        330,256
+             ======================================================== -->
+
+        <!-- Item 1: ASOS linen pants — Ghent->Dhaka->London->Sydney -->
+        <path d="M 68,114 Q 150,132 222,167"
+              stroke="rgba(255,255,255,0.28)" stroke-width="0.95" fill="none" stroke-dasharray="2,2"/>
+        <path d="M 222,167 C 163,194 100,173 56,114"
+              stroke="rgba(255,255,255,0.28)" stroke-width="0.95" fill="none" stroke-dasharray="5,3"/>
+        <path d="M 56,114 C 170,116 272,163 325,264"
+              stroke="rgba(255,255,255,0.28)" stroke-width="0.95" fill="none" stroke-dasharray="6,2,1,2"/>
+
+        <!-- Item 5: ASOS utility mini skirt — Dhaka->London->Sydney (different arc) -->
+        <path d="M 222,167 C 159,196 97,175 56,114"
+              stroke="rgba(255,255,255,0.24)" stroke-width="0.9" fill="none" stroke-dasharray="4,3"/>
+        <path d="M 56,114 C 172,120 274,166 325,264"
+              stroke="rgba(255,255,255,0.22)" stroke-width="0.9" fill="none" stroke-dasharray="6,2,1,2"/>
+
+        <!-- Item 9: ASOS Y2K mini dress — Dhaka->London->Sydney (third arc) -->
+        <path d="M 222,167 C 165,199 100,176 56,114"
+              stroke="rgba(255,255,255,0.2)" stroke-width="0.9" fill="none" stroke-dasharray="3,3"/>
+        <path d="M 56,114 C 168,122 271,168 325,264"
+              stroke="rgba(255,255,255,0.2)" stroke-width="0.9" fill="none" stroke-dasharray="6,2,1,2"/>
+
+        <!-- Item 4: Cotton On floral dress — Rajasthan->Dhaka->Melbourne->Sydney -->
+        <path d="M 192,157 Q 208,163 222,167"
+              stroke="rgba(255,255,255,0.25)" stroke-width="0.9" fill="none" stroke-dasharray="2,2"/>
+        <path d="M 222,167 C 240,210 260,250 306,282"
+              stroke="rgba(255,255,255,0.25)" stroke-width="0.9" fill="none" stroke-dasharray="5,3"/>
+        <path d="M 306,282 L 325,264"
+              stroke="rgba(255,255,255,0.25)" stroke-width="0.9" fill="none"/>
+
+        <!-- Item 2: Cotton On tee x2 — Rajasthan->Tianjin->Melbourne->Sydney -->
+        <path d="M 192,157 Q 243,140 290,128"
+              stroke="rgba(255,255,255,0.26)" stroke-width="0.9" fill="none" stroke-dasharray="2,2"/>
+        <path d="M 290,128 C 312,188 320,234 306,282"
+              stroke="rgba(255,255,255,0.26)" stroke-width="0.9" fill="none" stroke-dasharray="5,3"/>
+        <path d="M 306,282 L 325,264"
+              stroke="rgba(255,255,255,0.26)" stroke-width="0.9" fill="none"/>
+
+        <!-- Item 3: ASOS crossbody bag — Guangzhou->London->Sydney -->
+        <path d="M 276,170 C 220,210 130,220 56,114"
+              stroke="rgba(255,255,255,0.3)" stroke-width="0.95" fill="none" stroke-dasharray="5,3"/>
+        <path d="M 56,114 C 168,124 270,170 325,264"
+              stroke="rgba(255,255,255,0.3)" stroke-width="0.95" fill="none" stroke-dasharray="6,2,1,2"/>
+
+        <!-- Item 6: Princess Polly crop top — Guangzhou->Sydney direct sea -->
+        <path d="M 276,170 C 310,228 330,258 325,264"
+              stroke="rgba(255,255,255,0.32)" stroke-width="0.95" fill="none" stroke-dasharray="5,3"/>
+
+        <!-- Item 7: H&M wide-leg jeans — Dhaka->Hamburg->Sydney (long southern ocean arc) -->
+        <path d="M 222,167 C 175,145 120,118 74,107"
+              stroke="rgba(255,255,255,0.25)" stroke-width="0.9" fill="none" stroke-dasharray="2,2"/>
+        <path d="M 74,107 C 100,180 182,292 325,264"
+              stroke="rgba(255,255,255,0.25)" stroke-width="0.9" fill="none" stroke-dasharray="5,3"/>
+
+        <!-- Item 8: Adidas pullover — Ho Chi Minh->Hamburg->Sydney -->
+        <path d="M 264,183 C 210,160 132,120 74,107"
+              stroke="rgba(255,255,255,0.24)" stroke-width="0.9" fill="none" stroke-dasharray="2,2"/>
+        <path d="M 74,107 C 102,184 185,294 325,264"
+              stroke="rgba(255,255,255,0.22)" stroke-width="0.9" fill="none" stroke-dasharray="5,3"/>
+
+        <!-- Item 10: Urban Outfitters denim jacket — Lahore->London->Sydney -->
+        <path d="M 196,148 C 148,134 98,122 56,114"
+              stroke="rgba(255,255,255,0.24)" stroke-width="0.9" fill="none" stroke-dasharray="2,2"/>
+        <path d="M 56,114 C 171,121 273,167 325,264"
+              stroke="rgba(255,255,255,0.22)" stroke-width="0.9" fill="none" stroke-dasharray="6,2,1,2"/>
+
+        <!-- Item 15: IKEA polyester throw — Guangzhou->Sydney direct sea -->
+        <path d="M 276,170 C 312,235 333,262 325,264"
+              stroke="rgba(255,255,255,0.27)" stroke-width="0.9" fill="none" stroke-dasharray="4,3"/>
+
+        <!-- Item 16: Maison Margiela perfume — Grasse->Sydney (amber, long arc) -->
+        <path d="M 60,118 C 120,182 232,292 325,264"
+              stroke="rgba(200,139,42,0.35)" stroke-width="1.0" fill="none" stroke-dasharray="5,3"/>
+
+        <!-- Items 11-13: Uber Eats — local Sydney only (tiny radiating lines) -->
+        <line x1="325" y1="264" x2="336" y2="255" stroke="rgba(255,255,255,0.1)" stroke-width="0.6"/>
+        <line x1="325" y1="264" x2="339" y2="263" stroke="rgba(255,255,255,0.09)" stroke-width="0.6"/>
+        <line x1="325" y1="264" x2="335" y2="273" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+
+        <!-- Item 14: Woolworths — QLD->Sydney, NZ->Sydney -->
+        <path d="M 330,256 L 325,264" stroke="rgba(255,255,255,0.1)" stroke-width="0.6" stroke-dasharray="2,2"/>
+        <path d="M 344,293 L 325,264" stroke="rgba(255,255,255,0.09)" stroke-width="0.6" stroke-dasharray="2,2"/>
+
+        <!-- ======================================================== -->
+        <!-- MANUFACTURING HUB DOTS (sized by number of items)         -->
+        <!-- ======================================================== -->
+
+        <!-- Dhaka: r=6 (items 1,4,5,7,9 = 5 items) -->
+        <circle cx="222" cy="167" r="6" fill="#C94B3A" stroke="rgba(201,75,58,0.4)" stroke-width="2.5"/>
+        <!-- London: r=5.5 (6 items as dist hub) -->
+        <circle cx="56" cy="114" r="5.5" fill="#C94B3A" stroke="rgba(201,75,58,0.4)" stroke-width="2.5"/>
+        <!-- Guangzhou: r=4.5 (items 3,6,15 = 3 items) -->
+        <circle cx="276" cy="170" r="4.5" fill="#C94B3A" stroke="rgba(201,75,58,0.4)" stroke-width="2"/>
+        <!-- Sydney: r=7, largest — destination of all 16 -->
+        <circle cx="325" cy="264" r="7" fill="#C94B3A" stroke="rgba(201,75,58,0.5)" stroke-width="3"/>
+        <!-- Melbourne: r=3.5 -->
+        <circle cx="306" cy="282" r="3.5" fill="#C94B3A" stroke="rgba(201,75,58,0.35)" stroke-width="1.5"/>
+        <!-- Hamburg: r=3 -->
+        <circle cx="74" cy="107" r="3" fill="rgba(201,75,58,0.7)" stroke="rgba(201,75,58,0.3)" stroke-width="1.5"/>
+        <!-- Tianjin: r=2.5 -->
+        <circle cx="290" cy="128" r="2.5" fill="rgba(201,75,58,0.6)" stroke="rgba(201,75,58,0.25)" stroke-width="1.2"/>
+        <!-- Rajasthan: r=2.5 -->
+        <circle cx="192" cy="157" r="2.5" fill="rgba(201,75,58,0.6)" stroke="rgba(201,75,58,0.25)" stroke-width="1.2"/>
+        <!-- Ho Chi Minh: r=2.5 -->
+        <circle cx="264" cy="183" r="2.5" fill="rgba(201,75,58,0.55)" stroke="rgba(201,75,58,0.2)" stroke-width="1.2"/>
+        <!-- Lahore: r=2.5 -->
+        <circle cx="196" cy="148" r="2.5" fill="rgba(201,75,58,0.55)" stroke="rgba(201,75,58,0.2)" stroke-width="1.2"/>
+        <!-- Ghent: r=3 -->
+        <circle cx="68" cy="114" r="3" fill="rgba(201,75,58,0.6)" stroke="rgba(201,75,58,0.25)" stroke-width="1.2"/>
+        <!-- Grasse (France): r=2.5, amber -->
+        <circle cx="60" cy="118" r="2.5" fill="rgba(200,139,42,0.7)" stroke="rgba(200,139,42,0.3)" stroke-width="1.2"/>
+
+        <!-- Minimal anchor labels only -->
+        <text x="232" y="164" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6" letter-spacing="0.3">DHAKA</text>
+        <text x="34" y="110" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6" letter-spacing="0.3">LONDON</text>
+        <text x="248" y="169" fill="rgba(232,228,220,0.4)" font-family="'IBM Plex Mono',monospace" font-size="5.5">GUANGZHOU</text>
+        <text x="291" y="275" fill="rgba(232,228,220,0.65)" font-family="'IBM Plex Mono',monospace" font-size="6.5" letter-spacing="0.5">SYDNEY</text>
+
+        <!-- Post-map summary -->
+        <text x="18" y="312" fill="rgba(122,117,105,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6.5">FASHION 10 CHAINS · FOOD LOCAL · 4 DISTRIBUTION HUBS · ALL ROADS &#x2192; SYDNEY</text>
+        <text x="18" y="324" fill="rgba(122,117,105,0.42)" font-family="'IBM Plex Mono',monospace" font-size="6.5">COMBINED: ~287,000 KM · 12 COUNTRIES OF ORIGIN · 4 DISTRIBUTION HUBS</text>
+
+        <line x1="18" y1="335" x2="375" y2="335" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+        <!-- ======================================================== -->
+        <!-- NODE 2: PURCHASE FIELD — 16 ITEMS                        -->
+        <!-- ======================================================== -->
+        <circle cx="18" cy="349" r="4.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.2" fill="#0A0908"/>
+        <line x1="22" y1="349" x2="36" y2="349" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+        <text x="36" y="346" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="2">02  PURCHASE FIELD</text>
+        <text x="357" y="346" text-anchor="end" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="7">16 ITEMS</text>
+
+        <text x="18" y="361" fill="rgba(122,117,105,0.45)" font-family="'IBM Plex Mono',monospace" font-size="6">16 PURCHASES · APRIL 2026 · SIZED BY CO&#x2082;e</text>
+
+        <!-- ===================================================
+             PURCHASE FIELD GRID — 4 cols x 4 rows
+             Col centres: 55, 140, 225, 310
+             Row centres: 395, 432, 469, 506
+             r = CO2 kg / 3
+             fashion:   fill rgba(201,75,58,0.15)   stroke rgba(201,75,58,0.5)
+             food:      fill rgba(200,139,42,0.12)  stroke rgba(200,139,42,0.4)
+             homewares: fill rgba(42,123,138,0.12)  stroke rgba(42,123,138,0.4)
+             beauty:    fill rgba(122,117,105,0.15) stroke rgba(122,117,105,0.4)
+             =================================================== -->
+
+        <!-- ROW 1 — Items 1-4 (y=395) -->
+
+        <!-- 1: ASOS linen wide-leg pants  22kg -> r=7.3  FASHION -->
+        <circle cx="55" cy="395" r="7.3" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="55" y="408" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">LINEN</text>
+        <text x="55" y="415" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">22 kg</text>
+
+        <!-- 2: Cotton On basic tee x2  14kg -> r=4.7  FASHION -->
+        <circle cx="140" cy="395" r="4.7" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="140" y="407" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">TEE&#xD7;2</text>
+        <text x="140" y="414" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">14 kg</text>
+
+        <!-- 3: ASOS crossbody bag  11kg -> r=3.7  FASHION -->
+        <circle cx="225" cy="395" r="3.7" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="225" y="406" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">BAG</text>
+        <text x="225" y="413" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">11 kg</text>
+
+        <!-- 4: Cotton On floral dress  18kg -> r=6.0  FASHION -->
+        <circle cx="310" cy="395" r="6.0" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="310" y="407" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">DRESS</text>
+        <text x="310" y="414" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">18 kg</text>
+
+        <!-- ROW 2 — Items 5-8 (y=432) -->
+
+        <!-- 5: ASOS utility mini skirt  17kg -> r=5.7  FASHION -->
+        <circle cx="55" cy="432" r="5.7" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="55" y="444" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">SKIRT</text>
+        <text x="55" y="451" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">17 kg</text>
+
+        <!-- 6: Princess Polly crop top  15kg -> r=5.0  FASHION -->
+        <circle cx="140" cy="432" r="5.0" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="140" y="444" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">CROP</text>
+        <text x="140" y="451" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">15 kg</text>
+
+        <!-- 7: H&M wide-leg jeans  20kg -> r=6.7  FASHION -->
+        <circle cx="225" cy="432" r="6.7" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="225" y="444" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">JEANS</text>
+        <text x="225" y="451" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">20 kg</text>
+
+        <!-- 8: Adidas pullover  19kg -> r=6.3  FASHION -->
+        <circle cx="310" cy="432" r="6.3" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="310" y="444" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">PULOV.</text>
+        <text x="310" y="451" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">19 kg</text>
+
+        <!-- ROW 3 — Items 9-12 (y=469) -->
+
+        <!-- 9: ASOS Y2K mini dress  15kg -> r=5.0  FASHION -->
+        <circle cx="55" cy="469" r="5.0" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="55" y="481" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">Y2K</text>
+        <text x="55" y="488" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">15 kg</text>
+
+        <!-- 10: Urban Outfitters denim jacket  13kg -> r=4.3  FASHION -->
+        <circle cx="140" cy="469" r="4.3" fill="rgba(201,75,58,0.15)" stroke="rgba(201,75,58,0.5)" stroke-width="0.8"/>
+        <text x="140" y="480" text-anchor="middle" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">DENIM</text>
+        <text x="140" y="487" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">13 kg</text>
+
+        <!-- 11: Uber Eats pizza  15kg -> r=5.0  FOOD -->
+        <circle cx="225" cy="469" r="5.0" fill="rgba(200,139,42,0.12)" stroke="rgba(200,139,42,0.4)" stroke-width="0.8"/>
+        <text x="225" y="481" text-anchor="middle" fill="rgba(232,228,220,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">PIZZA</text>
+        <text x="225" y="488" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">15 kg</text>
+
+        <!-- 12: Uber Eats sushi  8kg -> r=2.7  FOOD -->
+        <circle cx="310" cy="469" r="2.7" fill="rgba(200,139,42,0.12)" stroke="rgba(200,139,42,0.4)" stroke-width="0.8"/>
+        <text x="310" y="479" text-anchor="middle" fill="rgba(232,228,220,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">SUSHI</text>
+        <text x="310" y="486" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">8 kg</text>
+
+        <!-- ROW 4 — Items 13-16 (y=506) -->
+
+        <!-- 13: Uber Eats Thai  18kg -> r=6.0  FOOD -->
+        <circle cx="55" cy="506" r="6.0" fill="rgba(200,139,42,0.12)" stroke="rgba(200,139,42,0.4)" stroke-width="0.8"/>
+        <text x="55" y="518" text-anchor="middle" fill="rgba(232,228,220,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">THAI</text>
+        <text x="55" y="525" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">18 kg</text>
+
+        <!-- 14: Woolworths online  27kg -> r=9.0  FOOD -->
+        <circle cx="140" cy="506" r="9.0" fill="rgba(200,139,42,0.12)" stroke="rgba(200,139,42,0.4)" stroke-width="0.8"/>
+        <text x="140" y="517" text-anchor="middle" fill="rgba(232,228,220,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">WOOLW.</text>
+        <text x="140" y="524" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">27 kg</text>
+
+        <!-- 15: IKEA polyester throw  18kg -> r=6.0  HOMEWARES -->
+        <circle cx="225" cy="506" r="6.0" fill="rgba(42,123,138,0.12)" stroke="rgba(42,123,138,0.4)" stroke-width="0.8"/>
+        <text x="225" y="518" text-anchor="middle" fill="rgba(232,228,220,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">THROW</text>
+        <text x="225" y="525" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">18 kg</text>
+
+        <!-- 16: Maison Margiela Replica perfume  31kg -> r=10.3  BEAUTY -->
+        <circle cx="310" cy="506" r="10.3" fill="rgba(122,117,105,0.15)" stroke="rgba(122,117,105,0.4)" stroke-width="0.8"/>
+        <text x="310" y="517" text-anchor="middle" fill="rgba(232,228,220,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">PARFUM</text>
+        <text x="310" y="524" text-anchor="middle" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5">31 kg</text>
+
+        <!-- Below grid annotation -->
+        <text x="18" y="545" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6.5">SMALLEST: SUSHI 8 KG · LARGEST: PERFUME 31 KG · TOTAL 281 KG</text>
+
+        <!-- Category key -->
+        <rect x="18" y="550" width="6" height="6" fill="rgba(201,75,58,0.35)" stroke="rgba(201,75,58,0.5)" stroke-width="0.6"/>
+        <text x="27" y="556" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">FASHION</text>
+        <rect x="76" y="550" width="6" height="6" fill="rgba(200,139,42,0.25)" stroke="rgba(200,139,42,0.4)" stroke-width="0.6"/>
+        <text x="85" y="556" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">FOOD</text>
+        <rect x="117" y="550" width="6" height="6" fill="rgba(42,123,138,0.25)" stroke="rgba(42,123,138,0.4)" stroke-width="0.6"/>
+        <text x="126" y="556" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">HOMEWARES</text>
+        <rect x="196" y="550" width="6" height="6" fill="rgba(122,117,105,0.3)" stroke="rgba(122,117,105,0.4)" stroke-width="0.6"/>
+        <text x="205" y="556" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">BEAUTY</text>
+
+        <line x1="18" y1="563" x2="375" y2="563" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+        <!-- ======================================================== -->
+        <!-- NODE 3: MATERIAL COMPOSITE — 12+ MATERIAL TYPES          -->
+        <!-- ======================================================== -->
+        <circle cx="18" cy="577" r="4.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.2" fill="#0A0908"/>
+        <line x1="22" y1="577" x2="36" y2="577" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+        <text x="36" y="574" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="2">03  MATERIAL COMPOSITE</text>
+        <text x="357" y="574" text-anchor="end" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="7">12+ MATERIAL TYPES</text>
+
+        <!-- Zone percentage labels above bar -->
+        <text x="18" y="642" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">SYNTHETIC 52%</text>
+        <text x="196" y="642" fill="rgba(200,139,42,0.55)" font-family="'IBM Plex Mono',monospace" font-size="5.5">COTTON 24%</text>
+        <text x="277" y="642" fill="rgba(122,117,105,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">GLASS 12%</text>
+        <text x="318" y="642" fill="rgba(122,117,105,0.45)" font-family="'IBM Plex Mono',monospace" font-size="5.5">LINEN 8%</text>
+        <text x="344" y="642" fill="rgba(122,117,105,0.35)" font-family="'IBM Plex Mono',monospace" font-size="5.5">4%</text>
+
+        <!-- Fiber cross-section frame -->
+        <rect x="18" y="650" width="339" height="58" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.8"/>
+
+        <!-- SYNTHETIC zone: 52% -> 176px (x=18, w=176) -->
+        <rect x="18" y="650" width="176" height="58" fill="url(#synthetic)" clip-path="url(#clipSynth)"/>
+        <rect x="18" y="650" width="176" height="58" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+        <text x="22" y="682" fill="rgba(255,255,255,0.2)" font-family="'IBM Plex Mono',monospace" font-size="5.5" transform="rotate(90,22,682)">SYNTHETIC</text>
+
+        <!-- COTTON zone: 24% -> 81px (x=194, w=81) -->
+        <rect x="194" y="650" width="81" height="58" fill="url(#cotton)" clip-path="url(#clipCotton)"/>
+        <rect x="194" y="650" width="81" height="58" fill="none" stroke="rgba(200,139,42,0.18)" stroke-width="0.6"/>
+        <text x="198" y="693" fill="rgba(200,139,42,0.35)" font-family="'IBM Plex Mono',monospace" font-size="5.5" transform="rotate(90,198,693)">COTTON</text>
+
+        <!-- GLASS/PACKAGING zone: 12% -> 41px (x=275, w=41) -->
+        <rect x="275" y="650" width="41" height="58" fill="url(#glass)" clip-path="url(#clipGlass)"/>
+        <rect x="275" y="650" width="41" height="58" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+
+        <!-- LINEN/VISCOSE zone: 8% -> 27px (x=316, w=27) -->
+        <rect x="316" y="650" width="27" height="58" fill="url(#linen)" clip-path="url(#clipLinen)"/>
+        <rect x="316" y="650" width="27" height="58" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+
+        <!-- MIXED/OTHER zone: 4% -> 14px (x=343, w=14) -->
+        <rect x="343" y="650" width="14" height="58" fill="url(#mixed)" clip-path="url(#clipMixed)"/>
+        <rect x="343" y="650" width="14" height="58" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+
+        <!-- Zone dividers -->
+        <line x1="194" y1="650" x2="194" y2="708" stroke="rgba(255,255,255,0.15)" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <line x1="275" y1="650" x2="275" y2="708" stroke="rgba(255,255,255,0.15)" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <line x1="316" y1="650" x2="316" y2="708" stroke="rgba(255,255,255,0.15)" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <line x1="343" y1="650" x2="343" y2="708" stroke="rgba(255,255,255,0.12)" stroke-width="0.8" stroke-dasharray="2,2"/>
+
+        <!-- Annotations below bar -->
+        <text x="18" y="720" fill="rgba(122,117,105,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6.5">52% will outlast you · ~2.1M microfibres/wash · 85% projected landfill (UNEP)</text>
+        <text x="18" y="731" fill="rgba(122,117,105,0.42)" font-family="'IBM Plex Mono',monospace" font-size="6.5">cotton/linen: biodegrades · synthetic/glass: 200&#x2013;500+ yr landfill</text>
+
+        <!-- Biodegradability indicator strip -->
+        <!-- Green under cotton (x=194, 81px) + linen (x=316, 27px) -->
+        <rect x="194" y="738" width="81" height="4" fill="rgba(61,139,94,0.35)"/>
+        <rect x="316" y="738" width="27" height="4" fill="rgba(61,139,94,0.28)"/>
+        <!-- Red under synthetic (x=18, 176px) + glass (x=275, 41px) + mixed (x=343, 14px) -->
+        <rect x="18" y="738" width="176" height="4" fill="rgba(201,75,58,0.32)"/>
+        <rect x="275" y="738" width="41" height="4" fill="rgba(201,75,58,0.28)"/>
+        <rect x="343" y="738" width="14" height="4" fill="rgba(201,75,58,0.24)"/>
+        <text x="22" y="749" fill="rgba(61,139,94,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">biodegrades</text>
+        <text x="236" y="749" fill="rgba(201,75,58,0.5)" font-family="'IBM Plex Mono',monospace" font-size="5.5">persists 200&#x2013;500+ yr</text>
+
+        <line x1="18" y1="757" x2="375" y2="757" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+        <!-- ======================================================== -->
+        <!-- NODE 4: COST TO EARTH — APRIL AGGREGATE                   -->
+        <!-- ======================================================== -->
+        <circle cx="18" cy="771" r="4.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.2" fill="#0A0908"/>
+        <line x1="22" y1="771" x2="36" y2="771" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+        <text x="36" y="768" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="2">04  COST TO EARTH</text>
+        <text x="357" y="768" text-anchor="end" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="7">APRIL AGGREGATE</text>
+
+        <!-- YOU PAY $1,103 bar — total scale = 339px -->
+        <text x="18" y="780" fill="rgba(201,75,58,0.7)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="1">YOU PAY  $1,103.00</text>
+        <text x="357" y="780" text-anchor="end" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="6">proportional to dollar</text>
+
+        <!-- Hairline connectors -->
+        <line x1="30" y1="784" x2="30" y2="776" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+        <line x1="47" y1="784" x2="47" y2="776" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+        <line x1="81" y1="784" x2="81" y2="776" stroke="rgba(255,255,255,0.08)" stroke-width="0.6"/>
+
+        <!-- Bar segments:
+             Materials  $38  -> 38/1103 * 339 = ~12px  (x=18, w=12)
+             Labour     $54  -> 54/1103 * 339 = ~17px  (x=30, w=17)
+             Logistics  $112 -> 112/1103*339  = ~34px  (x=47, w=34)
+             Brand      $899 -> remainder     = 276px  (x=81, w=276)
+        -->
+        <rect x="18" y="784" width="12" height="24" fill="rgba(42,90,70,0.35)" stroke="rgba(255,255,255,0.1)" stroke-width="0.7"/>
+        <rect x="30" y="784" width="17" height="24" fill="rgba(80,65,35,0.3)" stroke="rgba(255,255,255,0.1)" stroke-width="0.7"/>
+        <rect x="47" y="784" width="34" height="24" fill="rgba(35,60,90,0.3)" stroke="rgba(255,255,255,0.1)" stroke-width="0.7"/>
+        <rect x="81" y="784" width="276" height="24" fill="rgba(201,75,58,0.12)" stroke="rgba(255,255,255,0.1)" stroke-width="0.7"/>
+        <!-- Full bar outline -->
+        <rect x="18" y="784" width="339" height="24" fill="none" stroke="rgba(201,75,58,0.3)" stroke-width="1"/>
+
+        <!-- Brand label inside bar -->
+        <text x="84" y="799" fill="rgba(255,255,255,0.4)" font-family="'IBM Plex Mono',monospace" font-size="6.5">$899 BRAND MARGIN + OVERHEAD</text>
+
+        <!-- Below-bar segment labels -->
+        <text x="18" y="818" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6">MATL $38</text>
+        <text x="55" y="818" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6">LABOUR $54</text>
+        <text x="108" y="818" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6">LOGISTICS $112</text>
+
+        <!-- EARTH PAYS $88 bar: 88/1103 * 339 = ~27px -->
+        <text x="18" y="832" fill="rgba(200,139,42,0.7)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="1">EARTH PAYS  $88 EST.</text>
+        <text x="357" y="832" text-anchor="end" fill="rgba(122,117,105,0.38)" font-family="'IBM Plex Mono',monospace" font-size="6">never invoiced</text>
+
+        <rect x="18" y="836" width="27" height="14" fill="rgba(200,139,42,0.18)" stroke="rgba(200,139,42,0.35)" stroke-width="0.8"/>
+        <line x1="357" y1="833" x2="357" y2="860" stroke="rgba(201,75,58,0.2)" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="323" y="860" fill="rgba(122,117,105,0.3)" font-family="'IBM Plex Mono',monospace" font-size="6">&#x2190; $1,103 scale</text>
+
+        <!-- Category breakdown of Earth Pays -->
+        <text x="18" y="862" fill="rgba(122,117,105,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6.5">FASHION: carbon $18 · water $14 · microplastics $8 = $40</text>
+        <text x="18" y="873" fill="rgba(200,139,42,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6.5">FOOD: packaging $9 · delivery $7 = $16</text>
+        <text x="18" y="884" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6.5">BEAUTY: packaging $12 · fragrance chemistry $10 = $22</text>
+        <text x="18" y="895" fill="rgba(42,123,138,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6.5">HOMEWARES: carbon $7 · microfibre $3 = $10</text>
+
+        <text x="18" y="907" fill="rgba(122,117,105,0.35)" font-family="'IBM Plex Mono',monospace" font-size="6.5">TRUE COST EST. $1,191 · 16 PURCHASES · ENVIRONMENTAL DEBT: NEVER COLLECTED</text>
+
+        <line x1="18" y1="916" x2="375" y2="916" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+        <!-- ======================================================== -->
+        <!-- NODE 5: END OF LIFE — 16 ITEMS · 200-500+ YRS            -->
+        <!-- ======================================================== -->
+        <circle cx="18" cy="930" r="4.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.2" fill="#0A0908"/>
+        <line x1="22" y1="930" x2="36" y2="930" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+        <text x="36" y="927" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="7" letter-spacing="2">05  END OF LIFE</text>
+        <text x="357" y="927" text-anchor="end" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="7">16 ITEMS · 200&#x2013;500+ YRS</text>
+
+        <text x="36" y="943" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="7">85% projected landfill · synthetic: 200&#x2013;500+ yr · cotton: ~5 yr</text>
+
+        <!-- EARTH CROSS-SECTION -->
+
+        <!-- Surface terrain (wavy ground line — verbatim from 03a) -->
+        <path d="M 18,958 Q 50,952 82,958 Q 114,964 146,958 Q 178,952 210,958 Q 242,964 274,958 Q 306,952 338,958 L 357,958 L 357,1068 L 18,1068 Z"
+              fill="rgba(255,255,255,0.015)" stroke="none"/>
+        <path d="M 18,958 Q 50,952 82,958 Q 114,964 146,958 Q 178,952 210,958 Q 242,964 274,958 Q 306,952 338,958"
+              stroke="rgba(255,255,255,0.3)" stroke-width="1.2" fill="none"/>
+
+        <!-- LAYER 1: Topsoil / active waste deposit (y=958-1006) -->
+        <rect x="18" y="958" width="270" height="48" fill="url(#topsoil)"/>
+        <path d="M 18,1006 Q 50,1002 82,1006 Q 114,1010 146,1006 Q 178,1002 210,1006 Q 242,1010 270,1006"
+              stroke="rgba(255,255,255,0.15)" stroke-width="0.8" fill="none"/>
+
+        <!-- LAYER 2: Compacted zone (y=1006-1048) -->
+        <rect x="18" y="1006" width="270" height="42" fill="url(#compacted)"/>
+        <line x1="18" y1="1048" x2="288" y2="1048" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+
+        <!-- LAYER 3: Deep sediment (y=1048-1080) -->
+        <rect x="18" y="1048" width="270" height="32" fill="url(#bedrock)"/>
+        <line x1="18" y1="1080" x2="288" y2="1080" stroke="rgba(255,255,255,0.2)" stroke-width="1.2"/>
+
+        <!-- Layer labels -->
+        <text x="22" y="972" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="6" letter-spacing="0.8">ACTIVE WASTE LAYER</text>
+        <text x="22" y="1022" fill="rgba(122,117,105,0.35)" font-family="'IBM Plex Mono',monospace" font-size="6" letter-spacing="0.8">COMPACTED WASTE</text>
+        <text x="22" y="1062" fill="rgba(122,117,105,0.3)" font-family="'IBM Plex Mono',monospace" font-size="6" letter-spacing="0.8">DEEP SEDIMENT</text>
+
+        <!-- 16 BURIED ITEM SILHOUETTES scattered through layers 1-2 -->
+        <!-- Fashion items: tiny garment shapes, red tint, very faint -->
+
+        <!-- item 1 — pants, layer 1 left -->
+        <g transform="translate(26,962)" stroke="rgba(201,75,58,0.18)" fill="rgba(201,75,58,0.04)" stroke-width="0.6">
+          <path d="M5,18 L4,8 L1,5 L0,2 L3,2 L5,4 L7,2 L10,2 L9,5 L12,8 L11,18 Z"/>
+          <path d="M4,8 L0,11 L2,12 L5,9" stroke-width="0.4"/>
+          <path d="M12,8 L16,11 L14,12 L11,9" stroke-width="0.4"/>
+        </g>
+
+        <!-- item 2 — tee, layer 1 -->
+        <g transform="translate(54,964)" stroke="rgba(201,75,58,0.16)" fill="rgba(201,75,58,0.03)" stroke-width="0.5">
+          <path d="M4,14 L3,7 L1,4 L0,1 L2,1 L4,3 L7,1 L9,1 L8,4 L10,7 L9,14 Z"/>
+          <line x1="3" y1="7" x2="0" y2="9" stroke-width="0.3"/>
+          <line x1="10" y1="7" x2="13" y2="9" stroke-width="0.3"/>
+        </g>
+
+        <!-- item 3 — bag oval, layer 1 -->
+        <ellipse cx="90" cy="972" rx="9" ry="5" stroke="rgba(201,75,58,0.16)" fill="rgba(201,75,58,0.03)" stroke-width="0.5"/>
+
+        <!-- item 4 — dress, layer 1 -->
+        <g transform="translate(112,963)" stroke="rgba(201,75,58,0.17)" fill="rgba(201,75,58,0.03)" stroke-width="0.5">
+          <path d="M5,18 L4,9 L1,6 L0,2 L3,2 L5,4 L8,2 L11,2 L10,6 L13,9 L12,18 Z"/>
+        </g>
+
+        <!-- item 5 — skirt rect, layer 1 -->
+        <rect x="138" y="964" width="12" height="14" rx="1" stroke="rgba(201,75,58,0.15)" fill="rgba(201,75,58,0.03)" stroke-width="0.5"/>
+
+        <!-- item 6 — crop top, layer 1 -->
+        <g transform="translate(162,964)" stroke="rgba(201,75,58,0.15)" fill="rgba(201,75,58,0.02)" stroke-width="0.5">
+          <path d="M4,10 L3,5 L1,3 L0,1 L2,1 L4,2 L6,1 L8,1 L7,3 L9,5 L8,10 Z"/>
+        </g>
+
+        <!-- item 7 — jeans, layer 1 right -->
+        <g transform="translate(186,963)" stroke="rgba(201,75,58,0.16)" fill="rgba(201,75,58,0.03)" stroke-width="0.5">
+          <path d="M5,18 L4,8 L2,5 L0,2 L5,2 L5,8 L7,8 L7,2 L12,2 L10,5 L8,8 L7,18 Z"/>
+        </g>
+
+        <!-- item 8 — pullover, layer 1 -->
+        <g transform="translate(210,964)" stroke="rgba(201,75,58,0.15)" fill="rgba(201,75,58,0.02)" stroke-width="0.5">
+          <path d="M5,14 L4,8 L1,5 L0,2 L3,2 L5,4 L7,2 L10,2 L9,5 L12,8 L11,14 Z"/>
+        </g>
+
+        <!-- item 9 — Y2K dress, layer 1/2 boundary -->
+        <g transform="translate(38,998)" stroke="rgba(201,75,58,0.14)" fill="rgba(201,75,58,0.02)" stroke-width="0.5">
+          <path d="M4,16 L3,8 L1,5 L0,2 L3,2 L4,4 L7,2 L10,2 L9,5 L11,8 L10,16 Z"/>
+        </g>
+
+        <!-- item 10 — denim jacket, layer 2 -->
+        <g transform="translate(72,1010)" stroke="rgba(201,75,58,0.13)" fill="rgba(201,75,58,0.02)" stroke-width="0.5">
+          <path d="M5,14 L4,7 L1,4 L0,1 L3,1 L5,3 L7,1 L10,1 L9,4 L12,7 L11,14 Z"/>
+          <path d="M4,7 L0,10" stroke-width="0.3"/>
+          <path d="M12,7 L16,10" stroke-width="0.3"/>
+        </g>
+
+        <!-- item 11 — pizza circle, layer 2 -->
+        <circle cx="110" cy="1019" r="7" stroke="rgba(200,139,42,0.18)" fill="rgba(200,139,42,0.03)" stroke-width="0.5"/>
+
+        <!-- item 12 — sushi small circle, layer 2 -->
+        <circle cx="138" cy="1024" r="4" stroke="rgba(200,139,42,0.15)" fill="rgba(200,139,42,0.02)" stroke-width="0.5"/>
+
+        <!-- item 13 — thai circle, layer 2 -->
+        <circle cx="162" cy="1016" r="6" stroke="rgba(200,139,42,0.16)" fill="rgba(200,139,42,0.02)" stroke-width="0.5"/>
+
+        <!-- item 14 — woolworths rect, layer 2 -->
+        <rect x="178" y="1014" width="20" height="14" rx="1" stroke="rgba(200,139,42,0.16)" fill="rgba(200,139,42,0.02)" stroke-width="0.5"/>
+
+        <!-- item 15 — IKEA throw rect, layer 2, teal -->
+        <rect x="208" y="1016" width="18" height="12" rx="1" stroke="rgba(42,123,138,0.2)" fill="rgba(42,123,138,0.02)" stroke-width="0.5"/>
+
+        <!-- item 16 — perfume bottle, layer 1 -->
+        <ellipse cx="244" cy="973" rx="6" ry="10" stroke="rgba(122,117,105,0.22)" fill="rgba(122,117,105,0.04)" stroke-width="0.6"/>
+        <rect x="241" y="961" width="6" height="4" rx="1" stroke="rgba(122,117,105,0.18)" fill="none" stroke-width="0.5"/>
+
+        <!-- Microplastic migration lines (fashion + synth items) -->
+        <line x1="32" y1="980" x2="26" y2="1006" stroke="rgba(200,139,42,0.18)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="60" y1="978" x2="56" y2="1014" stroke="rgba(200,139,42,0.16)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="90" y1="977" x2="86" y2="1022" stroke="rgba(200,139,42,0.14)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="118" y1="980" x2="114" y2="1012" stroke="rgba(200,139,42,0.13)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="144" y1="979" x2="142" y2="1032" stroke="rgba(200,139,42,0.12)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="168" y1="978" x2="170" y2="1044" stroke="rgba(200,139,42,0.1)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="200" y1="980" x2="198" y2="1052" stroke="rgba(42,123,138,0.12)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="220" y1="979" x2="218" y2="1060" stroke="rgba(42,123,138,0.1)" stroke-width="0.6" stroke-dasharray="1,2"/>
+        <line x1="246" y1="983" x2="244" y2="1056" stroke="rgba(122,117,105,0.1)" stroke-width="0.6" stroke-dasharray="1,2"/>
+
+        <!-- Microplastic particles -->
+        <circle cx="26" cy="1008" r="1.2" fill="rgba(200,139,42,0.28)"/>
+        <circle cx="56" cy="1020" r="1.1" fill="rgba(200,139,42,0.25)"/>
+        <circle cx="86" cy="1030" r="1.0" fill="rgba(200,139,42,0.22)"/>
+        <circle cx="114" cy="1022" r="1.0" fill="rgba(200,139,42,0.2)"/>
+        <circle cx="142" cy="1044" r="0.9" fill="rgba(200,139,42,0.18)"/>
+        <circle cx="170" cy="1056" r="0.9" fill="rgba(200,139,42,0.15)"/>
+        <circle cx="198" cy="1064" r="0.8" fill="rgba(42,123,138,0.18)"/>
+        <circle cx="218" cy="1072" r="0.8" fill="rgba(42,123,138,0.15)"/>
+
+        <!-- TIMELINE bar (right side of cross-section) -->
+        <line x1="298" y1="958" x2="298" y2="1080" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+        <!-- NOW -->
+        <line x1="294" y1="958" x2="302" y2="958" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+        <text x="305" y="961" fill="rgba(232,228,220,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6.5">NOW</text>
+        <!-- 10 YRS -->
+        <line x1="294" y1="988" x2="302" y2="988" stroke="rgba(255,255,255,0.18)" stroke-width="0.7"/>
+        <text x="305" y="991" fill="rgba(122,117,105,0.5)" font-family="'IBM Plex Mono',monospace" font-size="6">10 YRS</text>
+        <text x="305" y="999" fill="rgba(122,117,105,0.35)" font-family="'IBM Plex Mono',monospace" font-size="5.5">still intact</text>
+        <!-- 50 YRS -->
+        <line x1="294" y1="1024" x2="302" y2="1024" stroke="rgba(255,255,255,0.15)" stroke-width="0.7"/>
+        <text x="305" y="1027" fill="rgba(122,117,105,0.45)" font-family="'IBM Plex Mono',monospace" font-size="6">50 YRS</text>
+        <text x="305" y="1035" fill="rgba(122,117,105,0.3)" font-family="'IBM Plex Mono',monospace" font-size="5.5">fragmenting</text>
+        <!-- 100 YRS -->
+        <line x1="294" y1="1052" x2="302" y2="1052" stroke="rgba(255,255,255,0.13)" stroke-width="0.7"/>
+        <text x="305" y="1055" fill="rgba(122,117,105,0.4)" font-family="'IBM Plex Mono',monospace" font-size="6">100 YRS</text>
+        <text x="305" y="1063" fill="rgba(122,117,105,0.28)" font-family="'IBM Plex Mono',monospace" font-size="5.5">microplastics</text>
+        <!-- 200+ YRS -->
+        <line x1="294" y1="1074" x2="302" y2="1074" stroke="rgba(255,255,255,0.12)" stroke-width="0.7"/>
+        <text x="305" y="1077" fill="rgba(201,75,58,0.55)" font-family="'IBM Plex Mono',monospace" font-size="6">200+ YRS</text>
+
+        <!-- Depth scale -->
+        <line x1="18" y1="1048" x2="18" y2="1080" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+        <text x="21" y="1066" fill="rgba(122,117,105,0.28)" font-family="'IBM Plex Mono',monospace" font-size="5.5">est. 3&#x2013;8m depth</text>
+
+        <!-- CO2 total row at y=1080 -->
+        <rect x="18" y="1080" width="339" height="16" fill="rgba(201,75,58,0.07)"/>
+        <text x="22" y="1091" fill="rgba(201,75,58,0.8)" font-family="'IBM Plex Mono',monospace" font-size="7">TOTAL CO&#x2082;e: 281 KG · 16 PURCHASES · APRIL 2026 · a record not a judgement</text>
+
+        <!-- ======================================================== -->
+        <!-- FOOTER                                                     -->
+        <!-- ======================================================== -->
+        <line x1="0" y1="1085" x2="375" y2="1085" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+        <text x="22" y="1097" fill="rgba(122,117,105,0.22)" font-family="'IBM Plex Mono',monospace" font-size="6.5">TRACE SYSTEM · MONTHLY ANATOMY · DDES9016 AT2 · T. HUYNH z5398133</text>
+
+      </svg>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="trace-btn trace-btn-secondary">Close</button>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="proto-bar">
+  Prototype 03c · Monthly Anatomy <span>· DDES9016 AT2 · Tammy Huynh z5398133</span>
+</div>
+
+<script>
+function setView(v) {
+  document.getElementById('viewSummary').style.display = v === 'summary' ? 'flex' : 'none';
+  document.getElementById('viewAnatomy').style.display = v === 'anatomy' ? 'block' : 'none';
+  document.getElementById('tabSummary').classList.toggle('active', v === 'summary');
+  document.getElementById('tabAnatomy').classList.toggle('active', v === 'anatomy');
+  if (v === 'summary') animateBars();
+}
+function animateBars() {
+  setTimeout(() => {
+    document.getElementById('catFash').style.width = '100%';
+    document.getElementById('catFood').style.width = '41%';
+    document.getElementById('catBeauty').style.width = '19%';
+    document.getElementById('catHome').style.width = '11%';
+  }, 200);
+}
+animateBars(); // run on load since summary is default
+</script>
+
+</body>
+</html>
